@@ -26,9 +26,9 @@ dependencies {
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	implementation("org.springframework.boot:spring-boot-starter-jdbc")
+	implementation("org.springframework.security:spring-security-crypto")
 	runtimeOnly("com.oracle.database.jdbc:ojdbc11")
 	runtimeOnly("com.oracle.database.security:oraclepki")
-
 }
 
 kotlin {
