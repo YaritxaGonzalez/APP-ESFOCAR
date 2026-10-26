@@ -50,3 +50,4 @@ Wallet_*/
 *.p12
 *.jks
 *.pem
+application-local.properties
