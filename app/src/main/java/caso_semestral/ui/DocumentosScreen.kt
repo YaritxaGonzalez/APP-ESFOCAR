@@ -2,9 +2,11 @@ package com.example.caso_semestral.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
@@ -36,6 +38,10 @@ fun DocumentosScreen(vm: DocumentosViewModel, onAbrir: (Int) -> Unit) {
     val ocupado by vm.ocupado.collectAsState()
     var porEliminar by remember { mutableStateOf<DocumentoEntity?>(null) }
 
+    // el botón "Cargar" se expande solo cuando la lista está arriba del todo
+    val listaEstado = rememberLazyListState()
+    val botonExpandido by remember { derivedStateOf { listaEstado.firstVisibleItemIndex == 0 } }
+
     val selector = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { vm.cargar(it) }
     }
@@ -59,11 +65,12 @@ fun DocumentosScreen(vm: DocumentosViewModel, onAbrir: (Int) -> Unit) {
             }
         } else {
             LazyColumn(
+                state = listaEstado,
                 contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(documentos, key = { it.id }) { doc ->
-                    Card(onClick = { onAbrir(doc.id) }, modifier = Modifier.fillMaxWidth()) {
+                    Card(onClick = { onAbrir(doc.id) }, modifier = Modifier.fillMaxWidth().animateItem()) {
                         Row(
                             Modifier.padding(start = 16.dp, top = 8.dp, end = 4.dp, bottom = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -91,14 +98,15 @@ fun DocumentosScreen(vm: DocumentosViewModel, onAbrir: (Int) -> Unit) {
             }
         }
 
-        if (ocupado) {
-            LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
+        AnimatedVisibility(visible = ocupado, modifier = Modifier.align(Alignment.TopCenter)) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
         }
 
         ExtendedFloatingActionButton(
             onClick = { selector.launch(TIPOS_PERMITIDOS) },
             icon = { Icon(Icons.Default.UploadFile, contentDescription = null) },
             text = { Text("Cargar") },
+            expanded = botonExpandido,
             containerColor = VerdeInstitucional,
             contentColor = Color.White,
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
