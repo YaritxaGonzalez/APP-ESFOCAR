@@ -14,5 +14,6 @@ data class UsuarioEntity(
     val passwordHash: String,
     val salt: String,
     val fechaRegistro: Long = System.currentTimeMillis(),
-    val rol: String = "ESTUDIANTE"   // "ESTUDIANTE" o "DOCENTE" (nombre del enum Rol)
+    val rol: String = "ESTUDIANTE",  // "ESTUDIANTE" o "DOCENTE" (nombre del enum Rol)
+    val fotoRuta: String? = null     // ruta de la foto de perfil en filesDir (null = sin foto, se muestra la inicial)
 )

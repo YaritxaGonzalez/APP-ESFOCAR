@@ -1,9 +1,11 @@
 package com.example.caso_semestral.viewmodel
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.caso_semestral.data.AuthRepository
+import com.example.caso_semestral.data.FotoPerfilRepository
 import com.example.caso_semestral.data.SesionManager
 import com.example.caso_semestral.data.local.AppDatabase
 import com.example.caso_semestral.model.Asignatura
@@ -39,6 +41,7 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
     private val db = AppDatabase.obtener(app)
     private val repo = AuthRepository(db.usuarioDao(), db.usuarioAsignaturaDao())
+    private val fotoRepo = FotoPerfilRepository(app, db.usuarioDao())
     private val sesion = SesionManager(app)
 
     val estadoSesion: StateFlow<EstadoSesion> = sesion.usuarioId
@@ -59,6 +62,11 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     val asignaturas: StateFlow<List<Asignatura>> = sesion.usuarioId
         .flatMapLatest { id -> if (id == null) flowOf(emptyList<Asignatura>()) else flowOf(repo.obtenerAsignaturas(id)) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    // ruta de la foto de perfil del usuario activo (null = sin foto)
+    val foto: StateFlow<String?> = sesion.usuarioId
+        .flatMapLatest { id -> if (id == null) flowOf<String?>(null) else fotoRepo.observar(id) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _ui = MutableStateFlow(AuthUiState())
     val ui: StateFlow<AuthUiState> = _ui.asStateFlow()
@@ -111,6 +119,16 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
                 _ui.value = AuthUiState()
             }
         }
+    }
+
+    fun cambiarFoto(uri: Uri) {
+        val id = (estadoSesion.value as? EstadoSesion.ConSesion)?.usuarioId ?: return
+        viewModelScope.launch { fotoRepo.guardar(id, uri) }
+    }
+
+    fun quitarFoto() {
+        val id = (estadoSesion.value as? EstadoSesion.ConSesion)?.usuarioId ?: return
+        viewModelScope.launch { fotoRepo.quitar(id) }
     }
 
     fun cerrarSesion() {

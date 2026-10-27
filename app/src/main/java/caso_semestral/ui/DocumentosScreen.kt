@@ -116,11 +116,12 @@ fun DocumentosScreen(
                     }
                 } else {
                     LazyColumn(
+                        state = listaEstado,
                         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(visibles, key = { it.id }) { doc ->
-                            Card(onClick = { onAbrir(doc.id) }, modifier = Modifier.fillMaxWidth()) {
+                            Card(onClick = { onAbrir(doc.id) }, modifier = Modifier.fillMaxWidth().animateItem()) {
                                 Row(
                                     Modifier.padding(start = 16.dp, top = 8.dp, end = 4.dp, bottom = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -150,34 +151,6 @@ fun DocumentosScreen(
                                         Icon(Icons.Default.Delete, contentDescription = "Eliminar")
                                     }
                                 }
-        } else {
-            LazyColumn(
-                state = listaEstado,
-                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(documentos, key = { it.id }) { doc ->
-                    Card(onClick = { onAbrir(doc.id) }, modifier = Modifier.fillMaxWidth().animateItem()) {
-                        Row(
-                            Modifier.padding(start = 16.dp, top = 8.dp, end = 4.dp, bottom = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(iconoPara(doc.mime), contentDescription = null, tint = VerdeInstitucional)
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    doc.nombre.substringAfter("_"),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.titleSmall
-                                )
-                                Text(
-                                    "${formatearTamano(doc.tamanoBytes)} · ${formatearFecha(doc.fecha)}",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                            IconButton(onClick = { porEliminar = doc }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Eliminar")
                             }
                         }
                     }
@@ -193,10 +166,8 @@ fun DocumentosScreen(
             onClick = { selector.launch(TIPOS_PERMITIDOS) },
             icon = { Icon(Icons.Default.UploadFile, contentDescription = null) },
             text = { Text(if (esDocente) "Subir material" else "Cargar") },
-            containerColor = colorRol,
-            text = { Text("Cargar") },
             expanded = botonExpandido,
-            containerColor = VerdeInstitucional,
+            containerColor = colorRol,
             contentColor = Color.White,
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
         )
@@ -247,7 +218,6 @@ fun DocumentosScreen(
     }
 }
 
-// ... aquí siguen iconoPara(), formatearTamano() y formatearFecha() como estaban
 private fun iconoPara(mime: String): ImageVector = when {
     mime == "application/pdf" -> Icons.Default.PictureAsPdf
     mime.startsWith("image/") -> Icons.Default.Image

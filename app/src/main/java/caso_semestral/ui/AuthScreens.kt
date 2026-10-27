@@ -250,60 +250,6 @@ fun RegistroScreen(vm: AuthViewModel, onVolver: () -> Unit) {
                 TextButton(onClick = { paso = 1 }, modifier = Modifier.fillMaxWidth()) {
                     Text("Atrás", color = color)
                 }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        EncabezadoLogo("Nuevo usuario", "Crear cuenta")
-
-        Aparece {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = alias,
-                    onValueChange = { alias = it; vm.limpiarError() },
-                    label = { Text("Alias (mínimo 4 caracteres)") },
-                    singleLine = true,
-                    isError = aliasMalo || ui.error != null,
-                    supportingText = { MensajeAnimado(if (aliasMalo) "Muy corto" else null) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Contraseña (mínimo 8 caracteres)") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    singleLine = true,
-                    isError = passMala,
-                    supportingText = { MensajeAnimado(if (passMala) "Muy corta" else null) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = repetir,
-                    onValueChange = { repetir = it },
-                    label = { Text("Repetir contraseña") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    singleLine = true,
-                    isError = repetirMalo,
-                    supportingText = { MensajeAnimado(if (repetirMalo) "Las contraseñas no coinciden" else null) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                MensajeAnimado(ui.error, color = MaterialTheme.colorScheme.error)
-
-                Button(
-                    onClick = { vm.registrar(alias, password, repetir) },
-                    enabled = validarRegistro(alias, password, repetir) && !ui.cargando,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = VerdeInstitucional)
-                ) {
-                    AnimatedContent(targetState = ui.cargando, label = "botonRegistrar") { cargando ->
-                        if (cargando) {
-                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
-                        } else {
-                            Text("Registrarme")
-                        }
-                    }
-                }
-                TextButton(onClick = onVolver, modifier = Modifier.fillMaxWidth()) {
-                    Text("Ya tengo cuenta", color = VerdeInstitucional)
-                }
             }
         }
     }

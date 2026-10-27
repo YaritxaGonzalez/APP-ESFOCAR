@@ -124,6 +124,7 @@ private fun ContenidoApp(
 
     val alias by authVm.alias.collectAsState()
     val asignaturas by authVm.asignaturas.collectAsState()   // NUEVO
+    val foto by authVm.foto.collectAsState()                 // NUEVO: foto de perfil
     val documentos by docVm.documentos.collectAsState()
     val mensaje by docVm.mensaje.collectAsState()
     var confirmarCierre by remember { mutableStateOf(false) }
@@ -167,9 +168,6 @@ private fun ContenidoApp(
         gesturesEnabled = conBarraSuperior,
         drawerContent = {
             ModalDrawerSheet {
-                Text(
-                    if (esDocente) "ESFOCAR Docente" else "ESFOCAR Estudio",   // CAMBIADO
-                    style = MaterialTheme.typography.titleLarge,
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
@@ -180,7 +178,10 @@ private fun ContenidoApp(
                         modifier = Modifier.height(48.dp)
                     )
                     Spacer(Modifier.width(12.dp))
-                    Text("ESFOCAR Estudio", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        if (esDocente) "ESFOCAR Docente" else "ESFOCAR Estudio",
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 }
                 if (alias.isNotEmpty()) {
                     Text(
@@ -333,7 +334,15 @@ private fun ContenidoApp(
                 }
                 // CAMBIADO: el perfil recibe rol y asignaturas
                 composable(Rutas.PERFIL) {
-                    PerfilScreen(alias, rol, asignaturas) { confirmarCierre = true }
+                    PerfilScreen(
+                        alias = alias,
+                        rol = rol,
+                        asignaturas = asignaturas,
+                        fotoRuta = foto,
+                        onCambiarFoto = { uri -> authVm.cambiarFoto(uri) },
+                        onQuitarFoto = { authVm.quitarFoto() },
+                        onCerrarSesion = { confirmarCierre = true }
+                    )
                 }
             }
         }
