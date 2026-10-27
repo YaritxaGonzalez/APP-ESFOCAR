@@ -89,6 +89,7 @@ fun InicioScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
 
+        LogoInicio(VerdeAcento)
         // Etiqueta de estado + saludo
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(

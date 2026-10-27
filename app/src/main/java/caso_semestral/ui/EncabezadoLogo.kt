@@ -2,8 +2,10 @@ package com.example.caso_semestral.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,5 +48,34 @@ fun EncabezadoLogo(subtitulo: String, titulo: String, color: Color = VerdeInstit
         Spacer(Modifier.height(12.dp))
         Text(subtitulo, color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
         Text(titulo, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+// Logo con el nombre de la escuela, para la parte de arriba de las pantallas de Inicio
+// (fondo oscuro). El color del título cambia según el rol: verde claro o dorado.
+@Composable
+fun LogoInicio(colorTitulo: Color) {
+    // el Box reserva la altura para que el contenido de abajo no se mueva cuando aparece
+    Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.CenterStart) {
+        Aparece {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.logo_esfocar),
+                    contentDescription = "Logo Escuela de Formación de Carabineros",
+                    modifier = Modifier.height(64.dp)
+                )
+                Column {
+                    Text("ESFOCAR", color = colorTitulo, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Escuela de Formación de Carabineros",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
     }
 }

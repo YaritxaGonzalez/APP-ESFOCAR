@@ -3,6 +3,7 @@ package com.example.caso_semestral.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,7 +16,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.caso_semestral.ColorDocente
-import com.example.caso_semestral.Encabezado
 import com.example.caso_semestral.VerdeInstitucional
 import com.example.caso_semestral.data.CatalogoAsignaturas
 import com.example.caso_semestral.model.Rol
@@ -25,15 +25,29 @@ import com.example.caso_semestral.validarRegistro
 import com.example.caso_semestral.viewmodel.AuthViewModel
 
 @Composable
-fun LoginScreen(vm: AuthViewModel, onIrARegistro: () -> Unit) {
+fun LoginScreen(vm: AuthViewModel, rol: Rol, onIrARegistro: () -> Unit, onVolver: () -> Unit) {
     val ui by vm.ui.collectAsState()
     var alias by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
+    // el rol viene de la pantalla de bienvenida: define el color y qué alias se aceptan
+    val esDocente = rol == Rol.DOCENTE
+    val color = if (esDocente) ColorDocente else VerdeInstitucional
+    val aliasOk = validarAliasPorRol(alias, rol)
+    val errorRol: String? = when {
+        alias.isBlank() || aliasOk -> null
+        esDocente -> "Los docentes ingresan con un alias Docente_[nombre]"
+        else -> "Ese alias es de docente: vuelve atrás e ingresa como docente"
+    }
+
     LaunchedEffect(Unit) { vm.limpiarError() }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        EncabezadoLogo("App de estudio", "Iniciar sesión")
+        EncabezadoLogo(
+            if (esDocente) "Ingresar como docente" else "Ingresar como estudiante",
+            "Iniciar sesión",
+            color
+        )
 
         Aparece {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -42,7 +56,8 @@ fun LoginScreen(vm: AuthViewModel, onIrARegistro: () -> Unit) {
                     onValueChange = { alias = it; vm.limpiarError() },
                     label = { Text("Usuario") },
                     singleLine = true,
-                    isError = ui.error != null,
+                    isError = ui.error != null || errorRol != null,
+                    supportingText = { MensajeAnimado(errorRol) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
@@ -57,9 +72,9 @@ fun LoginScreen(vm: AuthViewModel, onIrARegistro: () -> Unit) {
                 )
                 Button(
                     onClick = { vm.iniciarSesion(alias, password) },
-                    enabled = validarLogin(alias, password) && !ui.cargando,
+                    enabled = validarLogin(alias, password) && aliasOk && !ui.cargando,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = VerdeInstitucional)
+                    colors = ButtonDefaults.buttonColors(containerColor = color)
                 ) {
                     AnimatedContent(targetState = ui.cargando, label = "botonEntrar") { cargando ->
                         if (cargando) {
@@ -70,7 +85,10 @@ fun LoginScreen(vm: AuthViewModel, onIrARegistro: () -> Unit) {
                     }
                 }
                 TextButton(onClick = onIrARegistro, modifier = Modifier.fillMaxWidth()) {
-                    Text("¿No tienes cuenta? Crear cuenta", color = VerdeInstitucional)
+                    Text("¿No tienes cuenta? Crear cuenta", color = color)
+                }
+                TextButton(onClick = onVolver, modifier = Modifier.fillMaxWidth()) {
+                    Text("Cambiar perfil", color = color)
                 }
             }
         }
@@ -81,10 +99,10 @@ fun LoginScreen(vm: AuthViewModel, onIrARegistro: () -> Unit) {
 //   Paso 1: rol, alias y contraseña (el docente debe usar un alias Docente_[nombre])
 //   Paso 2: asignaturas (las que cursa el estudiante / las que imparte el docente)
 @Composable
-fun RegistroScreen(vm: AuthViewModel, onVolver: () -> Unit) {
+fun RegistroScreen(vm: AuthViewModel, rolInicial: Rol = Rol.ESTUDIANTE, onVolver: () -> Unit) {
     val ui by vm.ui.collectAsState()
     var paso by remember { mutableStateOf(1) }
-    var rol by remember { mutableStateOf(Rol.ESTUDIANTE) }
+    var rol by remember { mutableStateOf(rolInicial) }
     var alias by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var repetir by remember { mutableStateOf("") }
@@ -114,141 +132,152 @@ fun RegistroScreen(vm: AuthViewModel, onVolver: () -> Unit) {
         }
 
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            Encabezado("Paso 1 de 2", "Crear cuenta", color)
+            EncabezadoLogo("Paso 1 de 2", "Crear cuenta", color)
 
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Soy…", fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = rol == Rol.ESTUDIANTE,
-                        onClick = { rol = Rol.ESTUDIANTE },
-                        label = { Text("Estudiante") }
-                    )
-                    FilterChip(
-                        selected = rol == Rol.DOCENTE,
-                        onClick = { rol = Rol.DOCENTE },
-                        label = { Text("Docente") }
-                    )
-                }
+            Aparece {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Soy…", fontWeight = FontWeight.SemiBold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = rol == Rol.ESTUDIANTE,
+                            onClick = { rol = Rol.ESTUDIANTE },
+                            label = { Text("Estudiante") }
+                        )
+                        FilterChip(
+                            selected = rol == Rol.DOCENTE,
+                            onClick = { rol = Rol.DOCENTE },
+                            label = { Text("Docente") }
+                        )
+                    }
 
-                // mensaje que ve solo el docente
-                if (esDocente) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = ColorDocente.copy(alpha = 0.15f))
-                    ) {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("Cuenta de docente", fontWeight = FontWeight.Bold, color = ColorDocente)
-                            Text(
-                                "Para crear una cuenta de docente, tu alias debe ser Docente_[nombre]. " +
-                                        "Ejemplo: Docente_Maria",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                    // mensaje que ve solo el docente (aparece animado al elegir Docente)
+                    AnimatedVisibility(visible = esDocente) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = ColorDocente.copy(alpha = 0.15f))
+                        ) {
+                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("Cuenta de docente", fontWeight = FontWeight.Bold, color = ColorDocente)
+                                Text(
+                                    "Para crear una cuenta de docente, tu alias debe ser Docente_[nombre]. " +
+                                            "Ejemplo: Docente_Maria",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
                         }
                     }
-                }
 
-                OutlinedTextField(
-                    value = alias,
-                    onValueChange = { alias = it; aliasEnUso = false; vm.limpiarError() },
-                    label = { Text(if (esDocente) "Alias (Docente_[nombre])" else "Alias (mínimo 4 caracteres)") },
-                    singleLine = true,
-                    isError = aliasMalo || aliasEnUso || errorRol != null,
-                    supportingText = {
-                        if (aliasEnUso) Text("Ese alias ya está en uso")
-                        else if (errorRol != null) Text(errorRol)
-                        else if (aliasMalo) Text("Muy corto")
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Contraseña (mínimo 8 caracteres)") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    singleLine = true,
-                    isError = passMala,
-                    supportingText = { if (passMala) Text("Muy corta") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = repetir,
-                    onValueChange = { repetir = it },
-                    label = { Text("Repetir contraseña") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    singleLine = true,
-                    isError = repetirMalo,
-                    supportingText = { if (repetirMalo) Text("Las contraseñas no coinciden") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    OutlinedTextField(
+                        value = alias,
+                        onValueChange = { alias = it; aliasEnUso = false; vm.limpiarError() },
+                        label = { Text(if (esDocente) "Alias (Docente_[nombre])" else "Alias (mínimo 4 caracteres)") },
+                        singleLine = true,
+                        isError = aliasMalo || aliasEnUso || errorRol != null,
+                        supportingText = {
+                            MensajeAnimado(
+                                when {
+                                    aliasEnUso -> "Ese alias ya está en uso"
+                                    errorRol != null -> errorRol
+                                    aliasMalo -> "Muy corto"
+                                    else -> null
+                                }
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Contraseña (mínimo 8 caracteres)") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        isError = passMala,
+                        supportingText = { MensajeAnimado(if (passMala) "Muy corta" else null) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = repetir,
+                        onValueChange = { repetir = it },
+                        label = { Text("Repetir contraseña") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        isError = repetirMalo,
+                        supportingText = { MensajeAnimado(if (repetirMalo) "Las contraseñas no coinciden" else null) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                Button(
-                    onClick = {
-                        verificando = true
-                        vm.comprobarAlias(alias) { libre ->
-                            verificando = false
-                            if (libre) paso = 2 else aliasEnUso = true
-                        }
-                    },
-                    enabled = validarRegistro(alias, password, repetir) && aliasOk && !verificando,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = color)
-                ) {
-                    Text("Continuar")
-                }
-                TextButton(onClick = onVolver, modifier = Modifier.fillMaxWidth()) {
-                    Text("Ya tengo cuenta", color = color)
+                    Button(
+                        onClick = {
+                            verificando = true
+                            vm.comprobarAlias(alias) { libre ->
+                                verificando = false
+                                if (libre) paso = 2 else aliasEnUso = true
+                            }
+                        },
+                        enabled = validarRegistro(alias, password, repetir) && aliasOk && !verificando,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = color)
+                    ) {
+                        Text("Continuar")
+                    }
+                    TextButton(onClick = onVolver, modifier = Modifier.fillMaxWidth()) {
+                        Text("Ya tengo cuenta", color = color)
+                    }
                 }
             }
         }
     } else {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            Encabezado(
+            EncabezadoLogo(
                 "Paso 2 de 2",
                 if (esDocente) "Asignaturas que impartes" else "Elige tus asignaturas",
                 color
             )
 
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                asignaturas.forEach { asignatura ->
-                    val marcada = asignatura.id in marcadas
-                    val alternar = {
-                        if (marcada) marcadas.remove(asignatura.id) else marcadas.add(asignatura.id)
-                        Unit
-                    }
-                    Card(
-                        modifier = Modifier.fillMaxWidth().clickable { alternar() },
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = marcada, onCheckedChange = { alternar() })
-                            Text(asignatura.nombre, fontWeight = FontWeight.SemiBold)
+            Aparece {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    asignaturas.forEach { asignatura ->
+                        val marcada = asignatura.id in marcadas
+                        val alternar = {
+                            if (marcada) marcadas.remove(asignatura.id) else marcadas.add(asignatura.id)
+                            Unit
+                        }
+                        Card(
+                            modifier = Modifier.fillMaxWidth().clickable { alternar() },
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = marcada, onCheckedChange = { alternar() })
+                                Text(asignatura.nombre, fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
-                }
 
-                Text(
-                    if (esDocente) "Podrás subir material solo en las asignaturas que impartes."
-                    else "Elige al menos una asignatura.",
-                    style = MaterialTheme.typography.bodySmall
-                )
+                    Text(
+                        if (esDocente) "Podrás subir material solo en las asignaturas que impartes."
+                        else "Elige al menos una asignatura.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
 
-                ui.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    MensajeAnimado(ui.error, color = MaterialTheme.colorScheme.error)
 
-                Button(
-                    onClick = { vm.registrar(alias, password, repetir, rol, marcadas.toList()) },
-                    enabled = marcadas.isNotEmpty() && !ui.cargando,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = color)
-                ) {
-                    if (ui.cargando) {
-                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
-                    } else {
-                        Text(if (esDocente) "Crear cuenta de docente" else "Empezar a estudiar")
+                    Button(
+                        onClick = { vm.registrar(alias, password, repetir, rol, marcadas.toList()) },
+                        enabled = marcadas.isNotEmpty() && !ui.cargando,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = color)
+                    ) {
+                        AnimatedContent(targetState = ui.cargando, label = "botonRegistrar") { cargando ->
+                            if (cargando) {
+                                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
+                            } else {
+                                Text(if (esDocente) "Crear cuenta de docente" else "Empezar a estudiar")
+                            }
+                        }
                     }
-                }
-                TextButton(onClick = { paso = 1 }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Atrás", color = color)
+                    TextButton(onClick = { paso = 1 }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Atrás", color = color)
+                    }
                 }
             }
         }

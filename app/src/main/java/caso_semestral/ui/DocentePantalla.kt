@@ -60,6 +60,7 @@ fun InicioDocenteScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
 
+        LogoInicio(OroAcento)
         // Etiqueta de estado + saludo
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(

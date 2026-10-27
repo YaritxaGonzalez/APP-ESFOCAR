@@ -29,13 +29,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavHostController
 import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.example.caso_semestral.ColorDocente
 import com.example.caso_semestral.R
 import com.example.caso_semestral.VerdeInstitucional
@@ -66,7 +66,7 @@ private fun NavHostController.irAPestana(ruta: String) {
 // Registro y Visor entran deslizándose desde la derecha; el resto (pestañas, login) con desvanecimiento
 private const val DURACION = 300
 
-private fun String?.deslizante() = this == Rutas.VISOR || this == Rutas.REGISTRO
+private fun String?.deslizante() = this == Rutas.VISOR || this == Rutas.REGISTRO || this == Rutas.LOGIN
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.entrada(): EnterTransition =
     if (targetState.destination.route.deslizante())
@@ -136,7 +136,7 @@ private fun ContenidoApp(
 
     val usuarioId = (estado as? EstadoSesion.ConSesion)?.usuarioId
     // se calcula una sola vez: cambiarlo después reiniciaría el NavHost
-    val destinoInicial = remember { if (usuarioId != null) Rutas.INICIO else Rutas.LOGIN }
+    val destinoInicial = remember { if (usuarioId != null) Rutas.INICIO else Rutas.BIENVENIDA }
 
     // reacciona a iniciar o cerrar sesión
     LaunchedEffect(usuarioId) {
@@ -145,7 +145,7 @@ private fun ContenidoApp(
         if (usuarioId != null && actual in Rutas.publicas) {
             nav.navigate(Rutas.INICIO) { popUpTo(nav.graph.id) { inclusive = true } }
         } else if (usuarioId == null && actual !in Rutas.publicas) {
-            nav.navigate(Rutas.LOGIN) { popUpTo(nav.graph.id) { inclusive = true } }
+            nav.navigate(Rutas.BIENVENIDA) { popUpTo(nav.graph.id) { inclusive = true } }
         }
     }
 
@@ -292,11 +292,31 @@ private fun ContenidoApp(
                 popEnterTransition = { entradaAtras() },
                 popExitTransition = { salidaAtras() }
             ) {
-                composable(Rutas.LOGIN) {
-                    LoginScreen(authVm) { nav.navigate(Rutas.REGISTRO) }
+                // NUEVO: primera pantalla, elegir estudiante o docente
+                composable(Rutas.BIENVENIDA) {
+                    BienvenidaScreen(
+                        onEstudiante = { nav.navigate(Rutas.login(Rol.ESTUDIANTE)) },
+                        onDocente = { nav.navigate(Rutas.login(Rol.DOCENTE)) }
+                    )
                 }
-                composable(Rutas.REGISTRO) {
-                    RegistroScreen(authVm) { nav.popBackStack() }
+                composable(
+                    Rutas.LOGIN,
+                    arguments = listOf(navArgument("rol") { type = NavType.StringType })
+                ) { entry ->
+                    val rolElegido = Rutas.rolDe(entry.arguments?.getString("rol"))
+                    LoginScreen(
+                        vm = authVm,
+                        rol = rolElegido,
+                        onIrARegistro = { nav.navigate(Rutas.registro(rolElegido)) },
+                        onVolver = { nav.popBackStack() }
+                    )
+                }
+                composable(
+                    Rutas.REGISTRO,
+                    arguments = listOf(navArgument("rol") { type = NavType.StringType })
+                ) { entry ->
+                    val rolElegido = Rutas.rolDe(entry.arguments?.getString("rol"))
+                    RegistroScreen(authVm, rolInicial = rolElegido) { nav.popBackStack() }
                 }
                 // CAMBIADO: según el rol se muestra un Inicio distinto
                 composable(Rutas.INICIO) {
