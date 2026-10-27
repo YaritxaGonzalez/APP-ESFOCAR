@@ -27,8 +27,7 @@ class DocumentoRepository(
 
     // copia el archivo elegido al almacenamiento interno y guarda sus metadatos
     // devuelve null si superó el tamaño máximo o no se pudo leer
-    suspend fun cargar(usuarioId: Int, uri: Uri): DocumentoEntity? = withContext(Dispatchers.IO) {
-        val resolver = appContext.contentResolver
+    suspend fun cargar(usuarioId: Int, uri: Uri, asignaturaId: Int = 0): DocumentoEntity? = withContext(Dispatchers.IO) {        val resolver = appContext.contentResolver
 
         val nombreOriginal = resolver.query(uri, null, null, null, null)?.use { c ->
             val i = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
@@ -68,7 +67,8 @@ class DocumentoRepository(
             nombre = nombreSeguro,
             rutaInterna = destino.absolutePath,
             mime = resolver.getType(uri) ?: "application/octet-stream",
-            tamanoBytes = destino.length()
+            tamanoBytes = destino.length(),
+            asignaturaId = asignaturaId
         )
         val id = documentoDao.insertar(documento)
         documento.copy(id = id.toInt())

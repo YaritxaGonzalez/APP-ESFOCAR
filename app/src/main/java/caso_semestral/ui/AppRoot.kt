@@ -36,8 +36,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.caso_semestral.ColorDocente
 import com.example.caso_semestral.R
 import com.example.caso_semestral.VerdeInstitucional
+import com.example.caso_semestral.model.Rol
 import com.example.caso_semestral.viewmodel.AuthViewModel
 import com.example.caso_semestral.viewmodel.DocumentosViewModel
 import com.example.caso_semestral.viewmodel.EstadoSesion
@@ -45,9 +47,10 @@ import kotlinx.coroutines.launch
 
 private data class Pestana(val ruta: String, val titulo: String, val icono: ImageVector)
 
-private val pestanas = listOf(
+// el docente ve "Material" en vez de "Documentos"
+private fun pestanasPara(docente: Boolean) = listOf(
     Pestana(Rutas.INICIO, "Inicio", Icons.Default.Home),
-    Pestana(Rutas.DOCUMENTOS, "Documentos", Icons.Default.Folder),
+    Pestana(Rutas.DOCUMENTOS, if (docente) "Material" else "Documentos", Icons.Default.Folder),
     Pestana(Rutas.PERFIL, "Perfil", Icons.Default.Person)
 )
 
@@ -91,18 +94,25 @@ fun AppRoot(
     docVm: DocumentosViewModel = viewModel()
 ) {
     val estado by authVm.estadoSesion.collectAsState()
+    val rol by authVm.rol.collectAsState()
 
-    // mientras se lee la sesión guardada no se muestra ninguna pantalla (evita el parpadeo del login)
-    if (estado is EstadoSesion.Cargando) {
+    // mientras se lee la sesión guardada (y el rol de la cuenta) no se muestra ninguna pantalla:
+    // evita el parpadeo del login y que un docente vea un instante la pantalla de estudiante
+    if (estado is EstadoSesion.Cargando || (estado is EstadoSesion.ConSesion && rol == null)) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
     } else {
-        ContenidoApp(estado, authVm, docVm)
+        ContenidoApp(estado, rol ?: Rol.ESTUDIANTE, authVm, docVm)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: DocumentosViewModel) {
+private fun ContenidoApp(
+    estado: EstadoSesion,
+    rol: Rol,                       // NUEVO
+    authVm: AuthViewModel,
+    docVm: DocumentosViewModel
+) {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val ruta = backStack?.destination?.route
@@ -113,9 +123,15 @@ private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: Doc
     val scope = rememberCoroutineScope()
 
     val alias by authVm.alias.collectAsState()
-    val documentos by docVm.documentos.collectAsState()   // NUEVO: lista para la pantalla de Inicio
+    val asignaturas by authVm.asignaturas.collectAsState()   // NUEVO
+    val documentos by docVm.documentos.collectAsState()
     val mensaje by docVm.mensaje.collectAsState()
     var confirmarCierre by remember { mutableStateOf(false) }
+
+    // NUEVO: cada rol tiene su color, su menú y sus pantallas
+    val esDocente = rol == Rol.DOCENTE
+    val colorRol = if (esDocente) ColorDocente else VerdeInstitucional
+    val pestanas = remember(esDocente) { pestanasPara(esDocente) }
 
     val usuarioId = (estado as? EstadoSesion.ConSesion)?.usuarioId
     // se calcula una sola vez: cambiarlo después reiniciaría el NavHost
@@ -151,6 +167,9 @@ private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: Doc
         gesturesEnabled = conBarraSuperior,
         drawerContent = {
             ModalDrawerSheet {
+                Text(
+                    if (esDocente) "ESFOCAR Docente" else "ESFOCAR Estudio",   // CAMBIADO
+                    style = MaterialTheme.typography.titleLarge,
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
@@ -227,7 +246,7 @@ private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: Doc
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = VerdeInstitucional,
+                            containerColor = colorRol,                      // CAMBIADO
                             titleContentColor = Color.White,
                             navigationIconContentColor = Color.White
                         )
@@ -246,7 +265,17 @@ private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: Doc
                                 selected = ruta == p.ruta,
                                 onClick = { nav.irAPestana(p.ruta) },
                                 icon = { Icon(p.icono, contentDescription = null) },
-                                label = { Text(p.titulo) }
+                                label = { Text(p.titulo) },
+                                // NUEVO: el docente ve la selección en dorado
+                                colors = if (esDocente) {
+                                    NavigationBarItemDefaults.colors(
+                                        selectedIconColor = ColorDocente,
+                                        selectedTextColor = ColorDocente,
+                                        indicatorColor = ColorDocente.copy(alpha = 0.15f)
+                                    )
+                                } else {
+                                    NavigationBarItemDefaults.colors()
+                                }
                             )
                         }
                     }
@@ -268,17 +297,33 @@ private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: Doc
                 composable(Rutas.REGISTRO) {
                     RegistroScreen(authVm) { nav.popBackStack() }
                 }
-                // CAMBIADO: el Inicio ahora recibe los documentos y dos acciones de navegación
+                // CAMBIADO: según el rol se muestra un Inicio distinto
                 composable(Rutas.INICIO) {
-                    InicioScreen(
-                        alias = alias,
-                        documentos = documentos,
-                        onIrDocumentos = { nav.irAPestana(Rutas.DOCUMENTOS) },
+                    if (esDocente) {
+                        InicioDocenteScreen(
+                            alias = alias,
+                            asignaturas = asignaturas,
+                            documentos = documentos,
+                            onIrDocumentos = { nav.irAPestana(Rutas.DOCUMENTOS) },
+                            onAbrir = { id -> nav.navigate(Rutas.visor(id)) }
+                        )
+                    } else {
+                        InicioScreen(
+                            alias = alias,
+                            documentos = documentos,
+                            onIrDocumentos = { nav.irAPestana(Rutas.DOCUMENTOS) },
+                            onAbrir = { id -> nav.navigate(Rutas.visor(id)) }
+                        )
+                    }
+                }
+                // CAMBIADO: recibe el rol y las asignaturas
+                composable(Rutas.DOCUMENTOS) {
+                    DocumentosScreen(
+                        vm = docVm,
+                        esDocente = esDocente,
+                        asignaturas = asignaturas,
                         onAbrir = { id -> nav.navigate(Rutas.visor(id)) }
                     )
-                }
-                composable(Rutas.DOCUMENTOS) {
-                    DocumentosScreen(docVm) { id -> nav.navigate(Rutas.visor(id)) }
                 }
                 composable(
                     Rutas.VISOR,
@@ -286,8 +331,9 @@ private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: Doc
                 ) { entrada ->
                     VisorScreen(docVm, entrada.arguments?.getInt("id") ?: -1)
                 }
+                // CAMBIADO: el perfil recibe rol y asignaturas
                 composable(Rutas.PERFIL) {
-                    PerfilScreen(alias) { confirmarCierre = true }
+                    PerfilScreen(alias, rol, asignaturas) { confirmarCierre = true }
                 }
             }
         }

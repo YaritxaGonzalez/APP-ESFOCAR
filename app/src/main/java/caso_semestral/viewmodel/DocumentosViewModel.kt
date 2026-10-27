@@ -44,11 +44,11 @@ class DocumentosViewModel(app: Application) : AndroidViewModel(app) {
         if (id == null) _seleccionado.value = null   // al cerrar sesión se limpia todo
     }
 
-    fun cargar(uri: Uri) {
+    fun cargar(uri: Uri, asignaturaId: Int = 0) {
         val id = usuarioId.value ?: return
         viewModelScope.launch {
             _ocupado.value = true
-            val resultado = repo.cargar(id, uri)
+            val resultado = repo.cargar(id, uri, asignaturaId)
             _mensaje.value = if (resultado != null) {
                 "Documento cargado"
             } else {

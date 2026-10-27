@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Quiz
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -37,8 +38,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.caso_semestral.ColorDocente
 import com.example.caso_semestral.VerdeInstitucional
 import com.example.caso_semestral.data.local.DocumentoEntity
+import com.example.caso_semestral.model.Asignatura
+import com.example.caso_semestral.model.Rol
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -51,7 +55,7 @@ private val VerdeBoton = Color(0xFF2E7D4A)        // verde para íconos sobre ta
 private val TextoSecundario = Color(0xFFF1F1F1)
 private val ColorSinInternet = Color(0xFFFFB74D)  // ámbar para el aviso sin conexión
 
-// ---------- Inicio ----------
+// ---------- Inicio (estudiante) ----------
 @Composable
 fun InicioScreen(
     alias: String,
@@ -189,8 +193,9 @@ fun InicioScreen(
 }
 
 // true solo si el teléfono tiene internet real; se actualiza sola cuando cambia la conexión
+// (internal: también la usa la pantalla de Inicio del docente)
 @Composable
-private fun rememberHayConexion(): Boolean {
+internal fun rememberHayConexion(): Boolean {
     val context = LocalContext.current
     val cm = remember { context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager }
 
@@ -263,15 +268,24 @@ private fun TarjetaDocumento(doc: DocumentoEntity, onAbrir: () -> Unit) {
 }
 
 // ---------- Perfil ----------
+// Sirve para los dos roles: el color, la etiqueta y el título de las asignaturas cambian según el rol.
 @Composable
-fun PerfilScreen(alias: String, onCerrarSesion: () -> Unit) {
-    Column(Modifier.fillMaxSize()) {
+fun PerfilScreen(
+    alias: String,
+    rol: Rol,
+    asignaturas: List<Asignatura>,
+    onCerrarSesion: () -> Unit
+) {
+    val esDocente = rol == Rol.DOCENTE
+    val colorRol = if (esDocente) ColorDocente else VerdeInstitucional
 
-        // Cabecera verde con avatar (inicial del alias) y etiqueta de rol
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+
+        // Cabecera con avatar (inicial del alias) y etiqueta de rol
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(VerdeInstitucional)
+                .background(colorRol)
                 .padding(horizontal = 20.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -281,7 +295,7 @@ fun PerfilScreen(alias: String, onCerrarSesion: () -> Unit) {
             ) {
                 Text(
                     text = alias.take(1).uppercase().ifEmpty { "?" },
-                    color = VerdeInstitucional,
+                    color = colorRol,
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -289,10 +303,9 @@ fun PerfilScreen(alias: String, onCerrarSesion: () -> Unit) {
             Spacer(Modifier.height(12.dp))
             Text(alias, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            // por ahora solo se registran estudiantes
             AssistChip(
                 onClick = {},
-                label = { Text("Estudiante", color = Color.White) },
+                label = { Text(if (esDocente) "Docente" else "Estudiante", color = Color.White) },
                 colors = AssistChipDefaults.assistChipColors(containerColor = Color.White.copy(alpha = 0.15f)),
                 border = null
             )
@@ -300,21 +313,27 @@ fun PerfilScreen(alias: String, onCerrarSesion: () -> Unit) {
 
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
-            // Tarjeta con el nombre
+            // Tarjeta con el nombre y las asignaturas
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Text("Mi cuenta", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    FilaInfo(Icons.Default.Person, "Nombre", alias)   // el alias se muestra como nombre
+                    FilaInfo(Icons.Default.Person, "Nombre", alias, colorRol)
+                    FilaInfo(
+                        Icons.Default.School,
+                        if (esDocente) "Asignaturas que imparte" else "Mis asignaturas",
+                        if (asignaturas.isEmpty()) "Ninguna" else asignaturas.joinToString("\n") { it.nombre },
+                        colorRol
+                    )
                 }
             }
 
             Button(
                 onClick = onCerrarSesion,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = VerdeInstitucional, contentColor = Color.White)
+                colors = ButtonDefaults.buttonColors(containerColor = colorRol, contentColor = Color.White)
             ) {
                 Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
@@ -326,9 +345,9 @@ fun PerfilScreen(alias: String, onCerrarSesion: () -> Unit) {
 
 // Fila de la tarjeta: ícono + título pequeño + valor
 @Composable
-private fun FilaInfo(icono: ImageVector, titulo: String, valor: String) {
+private fun FilaInfo(icono: ImageVector, titulo: String, valor: String, color: Color = VerdeInstitucional) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Icon(icono, contentDescription = null, tint = VerdeInstitucional)
+        Icon(icono, contentDescription = null, tint = color)
         Column {
             Text(titulo, style = MaterialTheme.typography.labelMedium)
             Text(valor, style = MaterialTheme.typography.bodyMedium)

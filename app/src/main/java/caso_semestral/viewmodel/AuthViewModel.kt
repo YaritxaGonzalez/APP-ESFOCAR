@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.caso_semestral.data.AuthRepository
 import com.example.caso_semestral.data.SesionManager
 import com.example.caso_semestral.data.local.AppDatabase
+import com.example.caso_semestral.model.Asignatura
+import com.example.caso_semestral.model.Rol
+import com.example.caso_semestral.validarAliasPorRol
 import com.example.caso_semestral.validarLogin
 import com.example.caso_semestral.validarRegistro
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,7 +37,8 @@ data class AuthUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class AuthViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val repo = AuthRepository(AppDatabase.obtener(app).usuarioDao())
+    private val db = AppDatabase.obtener(app)
+    private val repo = AuthRepository(db.usuarioDao(), db.usuarioAsignaturaDao())
     private val sesion = SesionManager(app)
 
     val estadoSesion: StateFlow<EstadoSesion> = sesion.usuarioId
@@ -45,6 +49,16 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
     val alias: StateFlow<String> = sesion.usuarioId
         .flatMapLatest { id -> if (id == null) flowOf("") else flowOf(repo.obtenerAlias(id) ?: "") }
         .stateIn(viewModelScope, SharingStarted.Eagerly, "")
+
+    // rol del usuario activo; null mientras se lee (así no se muestra por un instante la pantalla equivocada)
+    val rol: StateFlow<Rol?> = sesion.usuarioId
+        .flatMapLatest { id -> if (id == null) flowOf<Rol?>(null) else flowOf<Rol?>(repo.obtenerRol(id)) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    // asignaturas del usuario activo (las que cursa o las que imparte)
+    val asignaturas: StateFlow<List<Asignatura>> = sesion.usuarioId
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList<Asignatura>()) else flowOf(repo.obtenerAsignaturas(id)) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _ui = MutableStateFlow(AuthUiState())
     val ui: StateFlow<AuthUiState> = _ui.asStateFlow()
@@ -63,14 +77,33 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun registrar(alias: String, password: String, repetir: String) {
-        if (!validarRegistro(alias, password, repetir)) {
+    // paso 1 del registro: avisa si el alias está libre antes de pasar a elegir asignaturas
+    fun comprobarAlias(alias: String, resultado: (Boolean) -> Unit) {
+        viewModelScope.launch { resultado(repo.aliasDisponible(alias)) }
+    }
+
+    // paso 2 del registro: crea la cuenta con su rol y asignaturas, e inicia sesión
+    fun registrar(
+        alias: String,
+        password: String,
+        repetir: String,
+        rol: Rol,
+        asignaturaIds: List<Int>
+    ) {
+        if (!validarRegistro(alias, password, repetir) || asignaturaIds.isEmpty()) {
             _ui.value = AuthUiState(error = "Revisa los datos ingresados")
+            return
+        }
+        if (!validarAliasPorRol(alias, rol)) {
+            _ui.value = AuthUiState(
+                error = if (rol == Rol.DOCENTE) "El alias de docente debe ser Docente_[nombre]"
+                else "El prefijo Docente_ es solo para docentes"
+            )
             return
         }
         viewModelScope.launch {
             _ui.value = AuthUiState(cargando = true)
-            val id = repo.registrar(alias, password)
+            val id = repo.registrar(alias, password, rol, asignaturaIds)
             if (id == null) {
                 _ui.value = AuthUiState(error = "Ese alias ya está en uso")
             } else {

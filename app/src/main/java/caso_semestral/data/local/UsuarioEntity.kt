@@ -13,5 +13,6 @@ data class UsuarioEntity(
     val alias: String,
     val passwordHash: String,
     val salt: String,
-    val fechaRegistro: Long = System.currentTimeMillis()
+    val fechaRegistro: Long = System.currentTimeMillis(),
+    val rol: String = "ESTUDIANTE"   // "ESTUDIANTE" o "DOCENTE" (nombre del enum Rol)
 )
