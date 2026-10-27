@@ -4,10 +4,12 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
@@ -51,6 +53,10 @@ fun DocumentosScreen(
     var filtro by remember { mutableStateOf<Int?>(null) }          // null = todas las asignaturas
 
     val colorRol = if (esDocente) ColorDocente else VerdeInstitucional
+
+    // el botón "Cargar" se expande solo cuando la lista está arriba del todo
+    val listaEstado = rememberLazyListState()
+    val botonExpandido by remember { derivedStateOf { listaEstado.firstVisibleItemIndex == 0 } }
 
     val selector = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -144,6 +150,34 @@ fun DocumentosScreen(
                                         Icon(Icons.Default.Delete, contentDescription = "Eliminar")
                                     }
                                 }
+        } else {
+            LazyColumn(
+                state = listaEstado,
+                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(documentos, key = { it.id }) { doc ->
+                    Card(onClick = { onAbrir(doc.id) }, modifier = Modifier.fillMaxWidth().animateItem()) {
+                        Row(
+                            Modifier.padding(start = 16.dp, top = 8.dp, end = 4.dp, bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(iconoPara(doc.mime), contentDescription = null, tint = VerdeInstitucional)
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    doc.nombre.substringAfter("_"),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Text(
+                                    "${formatearTamano(doc.tamanoBytes)} · ${formatearFecha(doc.fecha)}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            IconButton(onClick = { porEliminar = doc }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Eliminar")
                             }
                         }
                     }
@@ -151,8 +185,8 @@ fun DocumentosScreen(
             }
         }
 
-        if (ocupado) {
-            LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
+        AnimatedVisibility(visible = ocupado, modifier = Modifier.align(Alignment.TopCenter)) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
         }
 
         ExtendedFloatingActionButton(
@@ -160,6 +194,9 @@ fun DocumentosScreen(
             icon = { Icon(Icons.Default.UploadFile, contentDescription = null) },
             text = { Text(if (esDocente) "Subir material" else "Cargar") },
             containerColor = colorRol,
+            text = { Text("Cargar") },
+            expanded = botonExpandido,
+            containerColor = VerdeInstitucional,
             contentColor = Color.White,
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
         )
