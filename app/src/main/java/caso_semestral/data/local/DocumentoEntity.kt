@@ -24,5 +24,6 @@ data class DocumentoEntity(
     val rutaInterna: String,   // ruta del archivo copiado en filesDir
     val mime: String,
     val tamanoBytes: Long,
-    val fecha: Long = System.currentTimeMillis()
+    val fecha: Long = System.currentTimeMillis(),
+    val asignaturaId: Int = 0  // asignatura a la que pertenece (0 = sin asignatura; lo usa el docente)
 )
