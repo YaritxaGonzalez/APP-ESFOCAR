@@ -1,6 +1,19 @@
 package com.example.caso_semestral.ui
 
 import android.content.Context
+import android.graphics.BitmapFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import android.net.Uri
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -274,10 +287,21 @@ fun PerfilScreen(
     alias: String,
     rol: Rol,
     asignaturas: List<Asignatura>,
+    fotoRuta: String? = null,                 // NUEVO: foto actual (null = sin foto)
+    onCambiarFoto: (Uri) -> Unit = {},        // NUEVO: el usuario eligió una foto
+    onQuitarFoto: () -> Unit = {},            // NUEVO: volver a la inicial
     onCerrarSesion: () -> Unit
 ) {
     val esDocente = rol == Rol.DOCENTE
     val colorRol = if (esDocente) ColorDocente else VerdeInstitucional
+
+    // abre la galería (selector del sistema: no necesita permisos)
+    val selectorFoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) onCambiarFoto(uri)
+    }
+    val abrirGaleria = {
+        selectorFoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
 
@@ -289,18 +313,29 @@ fun PerfilScreen(
                 .padding(horizontal = 20.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier.size(88.dp).clip(CircleShape).background(Color.White),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = alias.take(1).uppercase().ifEmpty { "?" },
+            // avatar tocable con una cámara chiquita en la esquina
+            Box(contentAlignment = Alignment.BottomEnd) {
+                AvatarPerfil(
+                    fotoRuta = fotoRuta,
+                    inicial = alias.take(1).uppercase().ifEmpty { "?" },
                     color = colorRol,
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.Bold
+                    tamano = 88.dp,
+                    modifier = Modifier.clickable { abrirGaleria() }
                 )
+                Box(
+                    modifier = Modifier.size(30.dp).clip(CircleShape).background(Color.White),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.CameraAlt, contentDescription = "Cambiar foto", tint = colorRol, modifier = Modifier.size(18.dp))
+                }
             }
-            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(onClick = { abrirGaleria() }) { Text("Cambiar foto", color = Color.White) }
+                if (fotoRuta != null) {
+                    TextButton(onClick = onQuitarFoto) { Text("Quitar foto", color = Color.White.copy(alpha = 0.8f)) }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
             Text(alias, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             AssistChip(
@@ -339,6 +374,41 @@ fun PerfilScreen(
                 Spacer(Modifier.width(8.dp))
                 Text("Cerrar sesión")
             }
+        }
+    }
+}
+
+// Círculo con la foto del usuario; si no tiene, muestra la inicial de su alias.
+// Lo usan los dos roles (estudiante y docente).
+@Composable
+fun AvatarPerfil(
+    fotoRuta: String?,
+    inicial: String,
+    color: Color,
+    tamano: Dp,
+    modifier: Modifier = Modifier
+) {
+    // carga la imagen fuera del hilo principal; se recarga sola si cambia la ruta
+    val imagen by produceState<ImageBitmap?>(initialValue = null, fotoRuta) {
+        value = if (fotoRuta == null) null else withContext(Dispatchers.IO) {
+            BitmapFactory.decodeFile(fotoRuta)?.asImageBitmap()
+        }
+    }
+
+    Box(
+        modifier = modifier.size(tamano).clip(CircleShape).background(Color.White),
+        contentAlignment = Alignment.Center
+    ) {
+        val img = imagen
+        if (img != null) {
+            Image(
+                bitmap = img,
+                contentDescription = "Foto de perfil",
+                contentScale = ContentScale.Crop,   // llena el círculo sin deformar
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Text(text = inicial, color = color, fontSize = (tamano.value * 0.45f).sp, fontWeight = FontWeight.Bold)
         }
     }
 }
