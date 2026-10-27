@@ -113,6 +113,7 @@ private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: Doc
     val scope = rememberCoroutineScope()
 
     val alias by authVm.alias.collectAsState()
+    val documentos by docVm.documentos.collectAsState()   // NUEVO: lista para la pantalla de Inicio
     val mensaje by docVm.mensaje.collectAsState()
     var confirmarCierre by remember { mutableStateOf(false) }
 
@@ -164,7 +165,7 @@ private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: Doc
                 }
                 if (alias.isNotEmpty()) {
                     Text(
-                        "Usuario: $alias",
+                        "Nombre: $alias",
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(horizontal = 24.dp)
                     )
@@ -267,7 +268,15 @@ private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: Doc
                 composable(Rutas.REGISTRO) {
                     RegistroScreen(authVm) { nav.popBackStack() }
                 }
-                composable(Rutas.INICIO) { InicioScreen(alias) }
+                // CAMBIADO: el Inicio ahora recibe los documentos y dos acciones de navegación
+                composable(Rutas.INICIO) {
+                    InicioScreen(
+                        alias = alias,
+                        documentos = documentos,
+                        onIrDocumentos = { nav.irAPestana(Rutas.DOCUMENTOS) },
+                        onAbrir = { id -> nav.navigate(Rutas.visor(id)) }
+                    )
+                }
                 composable(Rutas.DOCUMENTOS) {
                     DocumentosScreen(docVm) { id -> nav.navigate(Rutas.visor(id)) }
                 }
