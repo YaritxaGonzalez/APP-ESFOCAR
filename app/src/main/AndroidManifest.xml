@@ -14,11 +14,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Caso_semestral">
 
-        <activity android:name=".EstudiarActivity" />
-        <activity android:name=".RegistroActivity" />
-        <activity android:name=".InicioActivity" />
-        <activity android:name=".AsignaturasActivity" />
-
+        <!-- Única Activity: la navegación entre pantallas la maneja AppNav -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

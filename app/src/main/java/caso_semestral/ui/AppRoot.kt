@@ -1,5 +1,16 @@
 package com.example.caso_semestral.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -14,8 +25,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -23,6 +36,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.caso_semestral.R
 import com.example.caso_semestral.VerdeInstitucional
 import com.example.caso_semestral.viewmodel.AuthViewModel
 import com.example.caso_semestral.viewmodel.DocumentosViewModel
@@ -44,6 +58,32 @@ private fun NavHostController.irAPestana(ruta: String) {
         restoreState = true
     }
 }
+
+// ---------- Transiciones entre pantallas ----------
+// Registro y Visor entran deslizándose desde la derecha; el resto (pestañas, login) con desvanecimiento
+private const val DURACION = 300
+
+private fun String?.deslizante() = this == Rutas.VISOR || this == Rutas.REGISTRO
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.entrada(): EnterTransition =
+    if (targetState.destination.route.deslizante())
+        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(DURACION)) + fadeIn(tween(DURACION))
+    else fadeIn(tween(DURACION))
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.salida(): ExitTransition =
+    if (targetState.destination.route.deslizante())
+        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(DURACION)) + fadeOut(tween(DURACION))
+    else fadeOut(tween(DURACION))
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.entradaAtras(): EnterTransition =
+    if (initialState.destination.route.deslizante())
+        slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(DURACION)) + fadeIn(tween(DURACION))
+    else fadeIn(tween(DURACION))
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.salidaAtras(): ExitTransition =
+    if (initialState.destination.route.deslizante())
+        slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(DURACION)) + fadeOut(tween(DURACION))
+    else fadeOut(tween(DURACION))
 
 @Composable
 fun AppRoot(
@@ -104,16 +144,25 @@ private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: Doc
     val titulo = pestanas.find { it.ruta == ruta }?.titulo
         ?: seleccionado?.nombre?.substringAfter("_")
         ?: "Documento"
+    var tituloBarra by remember { mutableStateOf("") }
+    LaunchedEffect(titulo, conBarraSuperior) { if (conBarraSuperior) tituloBarra = titulo }
     ModalNavigationDrawer(
         drawerState = drawer,
         gesturesEnabled = conBarraSuperior,
         drawerContent = {
             ModalDrawerSheet {
-                Text(
-                    "ESFOCAR Estudio",
-                    style = MaterialTheme.typography.titleLarge,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
-                )
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.logo_esfocar),
+                        contentDescription = "Logo Escuela de Formación de Carabineros",
+                        modifier = Modifier.height(48.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text("ESFOCAR Estudio", style = MaterialTheme.typography.titleLarge)
+                }
                 if (alias.isNotEmpty()) {
                     Text(
                         "Nombre: $alias",
@@ -146,15 +195,26 @@ private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: Doc
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
+                Text(
+                    "Logo: Escuela de Formación de Carabineros. Uso académico (MVP con datos ficticios).",
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+                )
             }
         }
     ) {
         Scaffold(
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
-                if (conBarraSuperior) {
+                AnimatedVisibility(
+                    visible = conBarraSuperior,
+                    enter = slideInVertically { -it } + fadeIn(),
+                    exit = slideOutVertically { -it } + fadeOut()
+                ) {
                     TopAppBar(
-                        title = { Text(titulo) },
+                        title = {
+                            AnimatedContent(targetState = tituloBarra, label = "tituloBarra") { t -> Text(t) }
+                        },
                         navigationIcon = {
                             if (ruta == Rutas.VISOR) {
                                 IconButton(onClick = { nav.popBackStack() }) {
@@ -175,7 +235,11 @@ private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: Doc
                 }
             },
             bottomBar = {
-                if (conBarraInferior) {
+                AnimatedVisibility(
+                    visible = conBarraInferior,
+                    enter = slideInVertically { it } + fadeIn(),
+                    exit = slideOutVertically { it } + fadeOut()
+                ) {
                     NavigationBar {
                         pestanas.forEach { p ->
                             NavigationBarItem(
@@ -192,7 +256,11 @@ private fun ContenidoApp(estado: EstadoSesion, authVm: AuthViewModel, docVm: Doc
             NavHost(
                 navController = nav,
                 startDestination = destinoInicial,
-                modifier = Modifier.padding(padding)
+                modifier = Modifier.padding(padding),
+                enterTransition = { entrada() },
+                exitTransition = { salida() },
+                popEnterTransition = { entradaAtras() },
+                popExitTransition = { salidaAtras() }
             ) {
                 composable(Rutas.LOGIN) {
                     LoginScreen(authVm) { nav.navigate(Rutas.REGISTRO) }
