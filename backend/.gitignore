@@ -51,3 +51,7 @@ Wallet_*/
 *.jks
 *.pem
 application-local.properties
+
+### Secretos: NUNCA subir a GitHub
+Wallet_*/
+application-local.properties

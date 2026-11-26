@@ -26,9 +26,13 @@ dependencies {
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	implementation("org.springframework.boot:spring-boot-starter-jdbc")
-	implementation("org.springframework.security:spring-security-crypto")
-	runtimeOnly("com.oracle.database.jdbc:ojdbc11")
-	runtimeOnly("com.oracle.database.security:oraclepki")
+	implementation("org.springframework.boot:spring-boot-starter-security")
+	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+	runtimeOnly("com.oracle.database.jdbc:ojdbc11:23.26.3.0.0")
+	runtimeOnly("com.oracle.database.security:oraclepki:23.26.3.0.0")
+	runtimeOnly("com.oracle.database.security:osdt_core:21.23.0.0")
+	runtimeOnly("com.oracle.database.security:osdt_cert:21.23.0.0")
+	testImplementation("io.mockk:mockk:1.14.5")
 }
 
 kotlin {
