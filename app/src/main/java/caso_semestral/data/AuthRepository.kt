@@ -14,6 +14,7 @@ class AuthRepository(
     private val asignaturaDao: UsuarioAsignaturaDao
 ) {
 
+
     // paso 1 del registro: ¿el alias está libre?
     suspend fun aliasDisponible(alias: String): Boolean =
         usuarioDao.buscarPorAlias(alias.trim()) == null

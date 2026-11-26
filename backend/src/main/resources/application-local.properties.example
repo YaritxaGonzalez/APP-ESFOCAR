@@ -1,0 +1,4 @@
+# Copia este archivo como application-local.properties (está en .gitignore, NO se sube a GitHub)
+# Cuentas iniciales que crea DatosIniciales al arrancar (mínimo 8 caracteres)
+app.seed.admin-password=CAMBIAR_ADMIN
+app.seed.docente-password=CAMBIAR_DOCENTE

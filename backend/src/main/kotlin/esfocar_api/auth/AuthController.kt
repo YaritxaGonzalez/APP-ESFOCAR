@@ -12,12 +12,14 @@ import org.springframework.web.bind.annotation.RestController
 data class RegistroRequest(val alias: String, val password: String, val codigoSeccion: String)
 data class LoginRequest(val alias: String, val password: String)
 data class UsuarioResponse(val id: Long, val alias: String, val rol: String, val seccionId: Long?)
+data class LoginResponse(val token: String, val tipo: String, val expiraEnSegundos: Long, val usuario: UsuarioResponse)
 
 @RestController
 @RequestMapping("/api/auth")
 class AuthController(
     private val repo: UsuarioRepository,
-    private val encoder: PasswordEncoder
+    private val encoder: PasswordEncoder,
+    private val jwt: JwtService
 ) {
     private val regexAlias = Regex("^[A-Za-z0-9_.-]{4,30}$")
 
@@ -25,6 +27,7 @@ class AuthController(
     // el tiempo de respuesta no revele qué alias están registrados
     private val hashRelleno: String = encoder.encode("relleno-no-se-usa")!!
 
+    // registro público: solo crea ESTUDIANTES (los docentes los crea el ADMIN en /api/admin/usuarios)
     @PostMapping("/registro")
     fun registro(@RequestBody req: RegistroRequest): ResponseEntity<Any> {
         val alias = req.alias.trim()
@@ -47,6 +50,7 @@ class AuthController(
         }
     }
 
+    // login: devuelve un token JWT (Bearer) que la app manda en cada petición
     @PostMapping("/login")
     fun login(@RequestBody req: LoginRequest): ResponseEntity<Any> {
         val usuario = repo.buscarPorAlias(req.alias.trim())
@@ -56,7 +60,15 @@ class AuthController(
         if (usuario == null || !coincide)
             return error(HttpStatus.UNAUTHORIZED, "Usuario o contraseña incorrectos")
 
-        return ResponseEntity.ok(UsuarioResponse(usuario.id, usuario.alias, usuario.rol, usuario.seccionId))
+        val emitido = jwt.generar(usuario)
+        return ResponseEntity.ok(
+            LoginResponse(
+                token = emitido.token,
+                tipo = "Bearer",
+                expiraEnSegundos = emitido.expiraEnSegundos,
+                usuario = UsuarioResponse(usuario.id, usuario.alias, usuario.rol, usuario.seccionId)
+            )
+        )
     }
 
     private fun error(estado: HttpStatus, mensaje: String): ResponseEntity<Any> =
