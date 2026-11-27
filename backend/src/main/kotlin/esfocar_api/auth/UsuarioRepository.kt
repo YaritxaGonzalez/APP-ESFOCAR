@@ -46,7 +46,7 @@ class UsuarioRepository(private val jdbc: JdbcTemplate) {
         jdbc.update(PreparedStatementCreator { con ->
             con.prepareStatement(
                 "INSERT INTO usuario (alias, password_hash, rol, seccion_id) VALUES (?, ?, ?, ?)",
-                arrayOf("ID")
+                arrayOf("id")
             ).apply {
                 setString(1, alias)
                 setString(2, passwordHash)

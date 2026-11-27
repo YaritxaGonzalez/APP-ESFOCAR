@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.example.caso_semestral.data.ResultadoLogin
 
 // Estado de la sesión: evita mostrar el login un instante mientras se lee DataStore
 sealed interface EstadoSesion {
@@ -75,12 +76,19 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
         if (!validarLogin(alias, password)) return
         viewModelScope.launch {
             _ui.value = AuthUiState(cargando = true)
-            val id = repo.iniciarSesion(alias, password)
-            if (id == null) {
-                _ui.value = AuthUiState(error = "Usuario o contraseña incorrectos")
-            } else {
-                sesion.iniciar(id)
-                _ui.value = AuthUiState()
+            when (val resultado = repo.iniciarSesion(alias, password)) {
+                is ResultadoLogin.Exito -> {
+                    sesion.iniciar(resultado.usuarioId)
+                    _ui.value = AuthUiState()
+                }
+                ResultadoLogin.CredencialesInvalidas ->
+                    _ui.value = AuthUiState(error = "Usuario o contraseña incorrectos")
+                ResultadoLogin.SinConexion ->
+                    _ui.value = AuthUiState(error = "No se pudo conectar con el servidor. Revisa tu conexión.")
+                ResultadoLogin.RolNoSoportado ->
+                    _ui.value = AuthUiState(error = "Esta cuenta no puede usar la app móvil")
+                ResultadoLogin.ErrorServidor ->
+                    _ui.value = AuthUiState(error = "El servidor respondió con un error. Inténtalo más tarde")
             }
         }
     }

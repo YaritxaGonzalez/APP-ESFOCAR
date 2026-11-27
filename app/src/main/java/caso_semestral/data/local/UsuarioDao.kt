@@ -22,6 +22,10 @@ interface UsuarioDao {
     @Query("UPDATE usuarios SET fotoRuta = :ruta WHERE id = :id")
     suspend fun actualizarFoto(id: Int, ruta: String?)
 
+    // el rol manda el backend: se actualiza si cambió
+    @Query("UPDATE usuarios SET rol = :rol WHERE id = :id")
+    suspend fun actualizarRol(id: Int, rol: String)
+
     // devuelve el id generado, o -1 si el alias ya existía
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertar(usuario: UsuarioEntity): Long
